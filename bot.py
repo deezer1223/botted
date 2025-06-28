@@ -10,7 +10,7 @@ from telegram.ext import (
 
 # --- Ayarlar ---
 TELEGRAM_BOT_TOKEN = "7676326389:AAEmoFd8WabmM77OLgorxLXH5bu7UTxQEzo"
-ALLOWED_USERS = [7877979174,7185810681]  # İzin verilen Telegram ID'ler
+ALLOWED_USERS = [7185810681]  # İzin verilen Telegram ID'ler
 
 # Conversation adımları
 IP, USER, PASSWORD, CERT = range(4)
