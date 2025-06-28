@@ -2,23 +2,24 @@ import os
 import json
 import requests
 from datetime import datetime, timedelta
-from telegram import Bot, Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
-from keep_alive import keep_alive
+from telegram import Update
+from telegram.ext import (
+    Updater,
+    CommandHandler,
+    MessageHandler,
+    CallbackContext,
+    filters,
+    Application
+)
 
-keep_alive()
-
-# Bot tokenınızı buraya ekleyin
-TOKEN = "7676326389:AAEmoFd8WabmM77OLgorxLXH5bu7UTxQEzo"
-# Admin kullanıcı ID'leri
-ADMINS = [7877979174]  # Admin ID'lerini buraya ekleyin
-
-# Veri depolama dosyası
+# Config
+TOKEN = os.getenv("7676326389:AAEmoFd8WabmM77OLgorxLXH5bu7UTxQEzo")
+ADMINS = list(map(int, os.getenv("ADMIN_IDS", "").split(","))) if os.getenv("ADMIN_IDS") else []
 IPS_JSON = "ips.json"
 
-def start(update: Update, context: CallbackContext) -> None:
+async def start(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
-    update.message.reply_text(
+    await update.message.reply_text(
         f"Merhaba {user.first_name}! 👋\n\n"
         "Ben WHOIS IP Bot'um. Bana bir IP adresi gönder, sana detaylı bilgiler vereyim.\n\n"
         "Örnek: `91.99.150.157` şeklinde IP gönderebilirsin.",
@@ -26,28 +27,15 @@ def start(update: Update, context: CallbackContext) -> None:
     )
 
 def get_whois_info(ip: str) -> dict:
-    """IP adresi için WHOIS bilgilerini al"""
     try:
-        # IPAPI kullanarak bilgileri al
-        response = requests.get(f"http://ip-api.com/json/{ip}?fields=status,message,continent,continentCode,country,countryCode,region,regionName,city,district,zip,lat,lon,timezone,offset,currency,isp,org,as,asname,reverse,mobile,proxy,hosting,query")
+        response = requests.get(f"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,regionName,city,isp,org,as,reverse,mobile,proxy,hosting,query")
         data = response.json()
 
         if data.get("status") == "success":
-            # AS numarasını formatla
             as_number = "N/A"
             if data.get("as"):
                 as_parts = data.get("as", "").split(' ')
-                if as_parts:
-                    as_number = as_parts[0]
-
-            # Cloudflare bilgisini al
-            cloudflare_response = "N/A"
-            try:
-                cf_response = requests.get(f"https://www.cloudflare.com/cdn-cgi/trace?ip={ip}")
-                if "ip=" in cf_response.text:
-                    cloudflare_response = cf_response.text.split("\n")[1].split("=")[1]
-            except:
-                pass
+                as_number = as_parts[0] if as_parts else "N/A"
 
             return {
                 "ip": ip,
@@ -57,142 +45,107 @@ def get_whois_info(ip: str) -> dict:
                 "region": data.get("regionName", "N/A"),
                 "provider": f"{data.get('isp', 'N/A')} (AS{as_number})",
                 "organization": data.get("org", "N/A"),
-                "timezone": data.get("timezone", "N/A"),
-                "coordinates": f"{data.get('lat', 'N/A')}, {data.get('lon', 'N/A')}",
                 "mobile": data.get("mobile", False),
                 "proxy": data.get("proxy", False),
-                "hosting": data.get("hosting", False),
-                "cloudflare": cloudflare_response
+                "hosting": data.get("hosting", False)
             }
-        else:
-            return {"error": data.get("message", "Bilinmeyen hata")}
+        return {"error": data.get("message", "Unknown error")}
     except Exception as e:
         return {"error": str(e)}
 
 def save_ip_data(user_id: int, username: str, ip: str):
-    """IP sorgusunu kaydet"""
-    now = datetime.now()
-    data = {
-        "timestamp": now.strftime("%Y-%m-%d %H:%M:%S"),
+    entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "user_id": user_id,
         "username": username,
         "ip": ip
     }
-
-    # Eski verileri oku veya yeni liste oluştur
+    
     try:
-        with open(IPS_JSON, "r") as f:
-            existing_data = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        existing_data = []
+        with open(IPS_JSON, "r+") as f:
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError:
+                data = []
+            data.append(entry)
+            f.seek(0)
+            json.dump(data, f, indent=2)
+    except FileNotFoundError:
+        with open(IPS_JSON, "w") as f:
+            json.dump([entry], f, indent=2)
 
-    # Yeni veriyi ekle
-    existing_data.append(data)
-
-    # Dosyaya yaz
-    with open(IPS_JSON, "w") as f:
-        json.dump(existing_data, f, indent=2)
-
-def handle_ip(update: Update, context: CallbackContext) -> None:
-    """Kullanıcıdan gelen IP'yi işle"""
+async def handle_ip(update: Update, context: CallbackContext) -> None:
     ip = update.message.text.strip()
     
-    # Basit IP doğrulama
-    parts = ip.split('.')
-    if len(parts) != 4 or not all(part.isdigit() and 0 <= int(part) <= 255 for part in parts):
-        update.message.reply_text("Geçersiz IP adresi formatı. Lütfen doğru bir IPv4 adresi girin.")
+    if not all(part.isdigit() and 0 <= int(part) <= 255 for part in ip.split('.')) or len(ip.split('.')) != 4:
+        await update.message.reply_text("❌ Geçersiz IP formatı! Örnek: 8.8.8.8")
         return
 
-    # WHOIS bilgilerini al
-    whois_info = get_whois_info(ip)
-    
-    if "error" in whois_info:
-        update.message.reply_text(f"Hata: {whois_info['error']}")
+    info = get_whois_info(ip)
+    if "error" in info:
+        await update.message.reply_text(f"⚠️ Hata: {info['error']}")
         return
 
-    # Kullanıcı bilgilerini kaydet
     user = update.effective_user
-    save_ip_data(user.id, user.username, ip)
+    save_ip_data(user.id, user.username or "N/A", ip)
 
-    # Formatlı mesaj oluştur
-    message = (
-        f"🌐 *WHOIS Bilgileri* 🌐\n\n"
-        f"• *IP:* `{whois_info['ip']}`\n"
-        f"• *Reverse DNS:* `{whois_info['reverse']}`\n"
-        f"• *Ülke:* {whois_info['country']}\n"
-        f"• *Şehir:* {whois_info['city']}, {whois_info['region']}\n"
-        f"• *Saat Dilimi:* {whois_info['timezone']}\n"
-        f"• *Koordinatlar:* {whois_info['coordinates']}\n"
-        f"• *Provider:* {whois_info['provider']}\n"
-        f"• *Kuruluş:* {whois_info['organization']}\n"
-        f"• *Cloudflare Yanıtı:* `{whois_info['cloudflare']}`\n\n"
+    response_msg = (
+        f"🔍 *WHOIS Sonuçları* 🔍\n\n"
+        f"• *IP:* `{info['ip']}`\n"
+        f"• *Ülke:* {info['country']}\n"
+        f"• *Şehir:* {info['city']}, {info['region']}\n"
+        f"• *ISP:* {info['provider']}\n"
+        f"• *Organizasyon:* {info['organization']}\n"
+        f"• *Reverse DNS:* `{info['reverse']}`\n\n"
         f"*Ek Bilgiler:*\n"
-        f"• Mobil: {'✅' if whois_info['mobile'] else '❌'}\n"
-        f"• Proxy/VPN: {'✅' if whois_info['proxy'] else '❌'}\n"
-        f"• Hosting: {'✅' if whois_info['hosting'] else '❌'}\n\n"
-        f"@{user.username if user.username else 'N/A'} ✅\n"
-        f"_{datetime.now().strftime('%d %B %H:%M')}_"
+        f"📱 Mobil: {'✅' if info['mobile'] else '❌'}\n"
+        f"🛡️ Proxy/VPN: {'✅' if info['proxy'] else '❌'}\n"
+        f"🖥️ Hosting: {'✅' if info['hosting'] else '❌'}\n\n"
+        f"@{user.username if user.username else 'N/A'} ⏱️ {datetime.now().strftime('%d.%m.%Y %H:%M')}"
     )
 
-    # Mesajı gönder
-    update.message.reply_text(message, parse_mode="Markdown")
+    await update.message.reply_text(response_msg, parse_mode="Markdown")
 
-def send_ip_data(update: Update, context: CallbackContext) -> None:
-    """Adminlere son 24 saatte sorgulanan IP'leri gönder"""
-    user = update.effective_user
-    
-    if user.id not in ADMINS:
-        update.message.reply_text("⛔ Bu komut sadece yöneticiler için.")
+async def send_ip_data(update: Update, context: CallbackContext) -> None:
+    if update.effective_user.id not in ADMINS:
+        await update.message.reply_text("⛔ Yetkiniz yok!")
         return
 
+    cutoff = datetime.now() - timedelta(hours=24)
     try:
-        # Son 24 saatteki verileri filtrele
-        cutoff = datetime.now() - timedelta(hours=24)
-        
         with open(IPS_JSON, "r") as f:
-            all_data = json.load(f)
+            data = json.load(f)
+            recent_ips = [entry for entry in data if datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S") >= cutoff]
+            
+        if not recent_ips:
+            await update.message.reply_text("⚠️ Son 24 saatte kayıt bulunamadı")
+            return
+            
+        with open("recent_ips.json", "w") as f:
+            json.dump(recent_ips, f, indent=2)
         
-        recent_data = [
-            entry for entry in all_data 
-            if datetime.strptime(entry["timestamp"], "%Y-%m-%d %H:%M:%S") >= cutoff
-        ]
-
-        # Geçici dosya oluştur
-        temp_file = "recent_ips.json"
-        with open(temp_file, "w") as f:
-            json.dump(recent_data, f, indent=2)
-
-        # Dosyayı gönder
-        with open(temp_file, "rb") as f:
-            update.message.reply_document(
-                document=f,
-                filename="recent_ips.json",
-                caption="Son 24 saatte sorgulanan IP'ler:"
-            )
-
-        # Geçici dosyayı sil
-        os.remove(temp_file)
+        await update.message.reply_document(
+            document=open("recent_ips.json", "rb"),
+            filename="recent_ips.json",
+            caption="⏳ Son 24 saatte sorgulanan IP'ler"
+        )
+        os.remove("recent_ips.json")
     except Exception as e:
-        update.message.reply_text(f"Dosya gönderilirken hata oluştu: {e}")
+        await update.message.reply_text(f"❌ Hata: {str(e)}")
 
 def main() -> None:
-    """Botu başlat"""
-    updater = Updater(TOKEN)
-
-    # Komut işleyicileri
-    dispatcher = updater.dispatcher
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("data", send_ip_data))
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_ip))
-
-    # Botu başlat
-    updater.start_polling()
-    updater.idle()
+    app = Application.builder().token(TOKEN).build()
+    
+    # Handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("data", send_ip_data))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_ip))
+    
+    # Start bot
+    app.run_polling()
 
 if __name__ == '__main__':
-    # JSON dosyasını kontrol et veya oluştur
     if not os.path.exists(IPS_JSON):
         with open(IPS_JSON, "w") as f:
             json.dump([], f)
-    
     main()
