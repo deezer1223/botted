@@ -9,9 +9,9 @@ from keep_alive import keep_alive
 keep_alive()
 
 # Bot tokenınızı buraya ekleyin
-TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+TOKEN = "7676326389:AAEmoFd8WabmM77OLgorxLXH5bu7UTxQEzo"
 # Admin kullanıcı ID'leri
-ADMINS = [123456789]  # Admin ID'lerini buraya ekleyin
+ADMINS = [7877979174]  # Admin ID'lerini buraya ekleyin
 
 # Veri depolama dosyası
 IPS_JSON = "ips.json"
