@@ -14,7 +14,7 @@ import ping3
 from datetime import datetime
 from colorama import init, Fore, Back, Style
 from pyfiglet import Figlet
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, Bot
 from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 
 init(autoreset=True)
@@ -23,7 +23,8 @@ f = Figlet(font='slant')
 class DeezerIPCheckerBot:
     def __init__(self, token):
         self.token = token
-        self.updater = Updater(token=self.token, use_context=True)
+        self.bot = Bot(token=self.token)
+        self.updater = Updater(bot=self.bot, use_context=True)
         self.dispatcher = self.updater.dispatcher
         
         # Komut işleyicileri
