@@ -1,6 +1,2 @@
 python-telegram-bot 
-requests 
-python-nmap 
-ping3 
-colorama 
-pyfiglet
+paramiko
