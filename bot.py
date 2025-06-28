@@ -14,7 +14,7 @@ from telegram.ext import (
 
 # Config
 TOKEN = os.getenv("7676326389:AAEmoFd8WabmM77OLgorxLXH5bu7UTxQEzo")
-ADMINS = list(map(int, os.getenv("ADMIN_IDS", "").split(","))) if os.getenv("ADMIN_IDS") else []
+ADMINS = list(map(int, os.getenv("12345678", "").split(","))) if os.getenv("12345678") else []
 IPS_JSON = "ips.json"
 
 async def start(update: Update, context: CallbackContext) -> None:
