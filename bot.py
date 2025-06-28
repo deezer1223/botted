@@ -1,4 +1,3 @@
-P O O R, [28.06.2025 09:31]
 import logging
 import paramiko
 import threading
@@ -108,7 +107,6 @@ services:
     volumes:
       - /var/lib/marzban-node:/var/lib/marzban-node
 
-P O O R, [28.06.2025 09:31]
 environment:
       SSL_CLIENT_CERT_FILE: "/var/lib/marzban-node/ssl_client_cert.pem"
       SERVICE_PROTOCOL: rest
