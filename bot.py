@@ -9,15 +9,15 @@ from telegram.ext import (
 )
 
 # --- Ayarlar ---
-TELEGRAM_BOT_TOKEN = "TELEGRAM_BOT_TOKENINIZI_BURAYA"
-ALLOWED_USERS = [123456789]  # İzin verilen Telegram ID'ler
+TELEGRAM_BOT_TOKEN = "7676326389:AAEmoFd8WabmM77OLgorxLXH5bu7UTxQEzo"
+ALLOWED_USERS = [7877979174]  # İzin verilen Telegram ID'ler
 
 # Conversation adımları
 IP, USER, PASSWORD, CERT = range(4)
 
 # Loglama
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 
 def is_allowed(user_id):
     return user_id in ALLOWED_USERS
