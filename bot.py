@@ -20,7 +20,7 @@ keep_alive()
 logging.basicConfig(level=logging.INFO)
 
 # --- CONFIGURATION ---
-API_TOKEN = '7584944391:AAHOfvLyXOKuDA5uuNlvtzCj-Z_Cjya-q9U'
+API_TOKEN = '7790968356:AAGYEPi9cpgovtWmuzV98GYXjRAorWOIsGQ'
 SUPER_ADMIN_ID = 7877979174
 DATABASE_URL = "postgresql://pgadmin_eafh_user:Xxo4v3lTxuQtb2HM8RYEjvmniaY7MvhQ@dpg-d1jcravdiees738trfv0-a/pgadmin_eafh"
 # --- END CONFIGURATION ---
