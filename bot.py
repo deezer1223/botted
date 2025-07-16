@@ -16,8 +16,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError
 
 # keep_alive.py dosyanız varsa bu satırı aktif bırakın
-# from keep_alive import keep_alive
-# keep_alive()
+from keep_alive import keep_alive
+keep_alive()
 
 logging.basicConfig(level=logging.INFO)
 
